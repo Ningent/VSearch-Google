@@ -72,7 +72,17 @@ func main() {
 		}
 		placeholders = append(placeholders, fmt.Sprintf("(%s)", strings.Join(ph, ",")))
 
-		values = append(values, row[0], row[1], row[2], row[3], row[4], row[5])
+		values = append(
+			values,
+			cleanUTF8(row[0]),
+			cleanUTF8(row[1]),
+			cleanUTF8(row[2]),
+			cleanUTF8(row[3]),
+			cleanUTF8(row[4]),
+			cleanUTF8(row[5]),
+		)
+
+		// values = append(values, row[0], row[1], row[2], row[3], row[4], row[5])
 	}
 
 	query := fmt.Sprintf(
@@ -140,4 +150,16 @@ func ReadByte(file string) (byte, error) {
 	}
 
 	return data[0], nil
+}
+
+func cleanUTF8(s string) string {
+	var b strings.Builder
+	for _, r := range s {
+		if r == 0 || r == '\uFFFD' {
+			b.WriteRune(' ')
+		} else {
+			b.WriteRune(r)
+		}
+	}
+	return b.String()
 }

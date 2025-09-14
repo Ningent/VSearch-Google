@@ -4,6 +4,8 @@ import time
 from crawler import CrawlManager
 import threading
 import subprocess
+import pandas as pd
+import os
 
 url = {
     # 🔍 Moteurs de recherche
@@ -401,11 +403,34 @@ def crawleCategorie (categoris,urls):
 
 
 
-def FileRaw (filePath):
+# def FileRaw (filePath):
+#     if not os.path.exists(filePath):
+#         return 0
+#     with open (filePath , "r" , encoding = "utf-8") as file:
+#         return sum(1 for _ in file)
+
+
+def FileRaw(filePath):
     if not os.path.exists(filePath):
         return 0
-    with open (filePath , "r" , encoding = "utf-8") as file:
-        return sum(1 for _ in file)
+
+    try:
+        with open(filePath, "r", encoding="utf-8") as f:
+            return sum(1 for _ in f)
+    except UnicodeDecodeError:
+        try:
+            with open(filePath, "r", encoding="latin-1") as f:
+                return sum(1 for _ in f)
+        except UnicodeDecodeError:
+            try:
+                df = pd.read_csv(filePath, encoding="latin-1", on_bad_lines="skip")
+                df.to_csv(filePath, index=False, encoding="utf-8-sig", quoting=1)  # quoting=csv.QUOTE_ALL
+                print(f"⚡ CSV nettoyé et réécrit en UTF-8 : {filePath}")
+                return len(df)
+            except Exception as e:
+                print(f"Impossible de nettoyer le CSV : {e}")
+                return 0
+
 
 
 def RunCrawler ():

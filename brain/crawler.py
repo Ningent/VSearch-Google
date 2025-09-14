@@ -76,10 +76,18 @@ class Crawler:
             else:
                 if i.startswith("/wiki") or i.startswith("/w"):
                     i = "https://wikipedia.org" + i
+                    if "Sp%C3%A9cial:" in i or "Special:" in i:
+                        continue
                 elif i.startswith("#") or i == "#":
                     continue
                 else:
-                    i = "https:/" + i
+                    from urllib.parse import urljoin
+
+                    base = "https://wikipedia.org"
+
+                    i = urljoin(base, i)
+
+                    # i = "https:/" + i
                 liens.append(i)
         return liens
 
@@ -87,50 +95,136 @@ class Crawler:
         print(f"URL {self.url} → {len(self.lien)} liens trouvés")
 
     # 3. Sauvegarde en CSV et Excel
+    # def saveData(self):
+    #     csvPath = "data.csv"
+    #     linkPath = "LinkTxt.txt"
+    #
+    #     visited_from_file = set()
+    #     if os.path.exists(linkPath):
+    #         with open(linkPath, "r", encoding="utf-8") as f:
+    #             visited_from_file = set(line.strip() for line in f.readlines())
+    #
+    #     data = pd.DataFrame({
+    #         "URL": [self.url],
+    #         "title": [self.titre],
+    #         "subTitle": [json.dumps(self.subtitle, ensure_ascii=False)],
+    #         "paragraphe": [json.dumps(self.paragraphe, ensure_ascii=False)],
+    #         "lien": [json.dumps(self.lien, ensure_ascii=False)],
+    #         "categorie": [self.categorie]
+    #     })
+    #
+    #     if self.url not in visited_from_file:
+    #         if os.path.exists(csvPath) and os.path.getsize(csvPath) > 0:
+    #             try:
+    #                 df_existing = pd.read_csv(
+    #                     csvPath,
+    #                     encoding="utf-8-sig",
+    #                     quoting=csv.QUOTE_ALL,
+    #                     quotechar='"',
+    #                     escapechar='\\',
+    #                     engine="python"
+    #                 )
+    #             except pd.errors.EmptyDataError:
+    #                 df_existing = pd.DataFrame()
+    #             df_combined = pd.concat([df_existing, data], ignore_index=True)
+    #         else:
+    #             df_combined = data
+    #
+    #
+    #         df_combined.to_csv(csvPath, index=False, encoding="utf-8-sig", quoting=csv.QUOTE_ALL)
+    #
+    #         print(f"Données ajoutées -> {self.url}")
+    #
+    #         with open(linkPath, "a", encoding="utf-8") as f:
+    #             f.write(self.url + "\n")
+    #     else:
+    #         print(f"{self.url} déjà présent dans LinkTxt.txt, skip CSV mais continue crawling")
+
+
+
+    # 4. Sauvegarde des URLs crawlées
+
+    import pandas as pd
+    import csv
+
+
+
     def saveData(self):
         csvPath = "data.csv"
         linkPath = "LinkTxt.txt"
 
-        # --- Lire LinkTxt.txt pour savoir quelles URLs sont déjà dans le CSV ---
         visited_from_file = set()
         if os.path.exists(linkPath):
-            with open(linkPath, "r", encoding="utf-8") as f:
+            with open(linkPath, "r", encoding="utf-8", errors="ignore") as f:
                 visited_from_file = set(line.strip() for line in f.readlines())
 
-        # --- Préparer les données ---
+        def read_clean_csv(csvPath):
+            try:
+                df = pd.read_csv(csvPath, encoding="utf-8-sig", on_bad_lines="skip", engine="python",
+                                 quoting=csv.QUOTE_ALL)
+            except UnicodeDecodeError:
+                df = pd.read_csv(csvPath, encoding="latin-1", on_bad_lines="skip", engine="python",
+                                 quoting=csv.QUOTE_ALL)
+
+            for col in df.select_dtypes(include='object').columns:
+                df[col] = df[col].apply(
+                    lambda x: x.encode('utf-8', errors='replace').decode('utf-8') if isinstance(x, str) else x)
+
+            return df
+
+        def clean_text(s):
+            if not s:
+                return ""
+            return s.encode("utf-8", errors="replace").decode("utf-8").replace('"', '""')
+
+        def safe_json(obj):
+            return json.dumps(obj, ensure_ascii=False).replace('"', '""')
+
         data = pd.DataFrame({
-            "URL": [self.url],
-            "title": [self.titre],
-            "subTitle": [json.dumps(self.subtitle, ensure_ascii=False)],
-            "paragraphe": [json.dumps(self.paragraphe, ensure_ascii=False)],
-            "lien": [json.dumps(self.lien, ensure_ascii=False)],
-            "categorie": [self.categorie]
+            "URL": [clean_text(self.url)],
+            "title": [clean_text(self.titre)],
+            "subTitle": [safe_json(self.subtitle)],
+            "paragraphe": [safe_json(self.paragraphe)],
+            "lien": [safe_json(self.lien)],
+            "categorie": [clean_text(self.categorie)]
         })
 
-        # --- Ajouter la ligne au CSV uniquement si elle n’existe pas déjà ---
         if self.url not in visited_from_file:
             if os.path.exists(csvPath) and os.path.getsize(csvPath) > 0:
                 try:
-                    df_existing = pd.read_csv(csvPath, encoding="utf-8-sig", quoting=csv.QUOTE_ALL)
+                    # df_existing = pd.read_csv(
+                    #     csvPath,
+                    #     encoding="utf-8-sig",
+                    #     quoting=csv.QUOTE_ALL,
+                    #     quotechar='"',
+                    #     escapechar='\\',
+                    #     engine="python",
+                    #     on_bad_lines="skip"
+                    # )
+                    df_existing = read_clean_csv(csvPath)
                 except pd.errors.EmptyDataError:
                     df_existing = pd.DataFrame()
                 df_combined = pd.concat([df_existing, data], ignore_index=True)
             else:
                 df_combined = data
 
-
-            # --- Écrire le CSV en échappant tout correctement ---
-            df_combined.to_csv(csvPath, index=False, encoding="utf-8-sig", quoting=csv.QUOTE_ALL)
+            df_combined.to_csv(
+                csvPath,
+                index=False,
+                encoding="utf-8-sig",
+                quoting=csv.QUOTE_ALL,
+                quotechar='"',
+                escapechar='\\',
+                errors="replace"
+            )
 
             print(f"Données ajoutées -> {self.url}")
 
-            # --- Ajouter l’URL dans LinkTxt.txt pour ne pas la réécrire ---
-            with open(linkPath, "a", encoding="utf-8") as f:
+            with open(linkPath, "a", encoding="utf-8", errors="ignore") as f:
                 f.write(self.url + "\n")
         else:
             print(f"{self.url} déjà présent dans LinkTxt.txt, skip CSV mais continue crawling")
 
-    # 4. Sauvegarde des URLs crawlées
     def saveUrl(self):
         self.visited_urls.add(self.url)
         with open("LinkTxt.txt", "w", encoding="utf-8") as f:
