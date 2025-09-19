@@ -3,14 +3,16 @@ package main
 import (
 	"database/sql"
 	"fmt"
-	"log"
 	"os"
+	"strings"
 
 	"github.com/joho/godotenv"
+	"github.com/lib/pq"
 	_ "github.com/lib/pq"
 )
 
 func main() {
+	fmt.Println("[1/5] Chargement des variables d'environnement...")
 	_ = godotenv.Load("C:/Users/WIN!!/Documents/google/brain/.env")
 
 	user := os.Getenv("SupabaseName")
@@ -24,51 +26,79 @@ func main() {
 		host, port, user, password, dbName,
 	)
 
+	fmt.Println("[2/5] Connexion à la base de données...")
 	bdd, err := sql.Open("postgres", spt)
 	if err != nil {
 		panic(err)
 	}
-
 	defer bdd.Close()
 
-	query := `SELECT paragraphe FROM main`
-
-	row, err := bdd.Query(query)
-
+	query := `SELECT "URL", paragraphe FROM main`
+	fmt.Println("[3/5] Exécution de la requête SELECT sur la table main...")
+	rows, err := bdd.Query(query)
 	if err != nil {
 		panic(err)
 	}
+	defer rows.Close()
 
-	fileName := "dicc.json"
-	var file *os.File
+	// map[word] => set d'URLs pour éviter doublons
+	index := make(map[string]map[string]bool)
+	countRows := 0
 
-	_, err = os.Stat(fileName)
-	fileExist := os.IsNotExist(err)
-
-	if fileExist {
-		file, err = os.Create(fileName)
+	fmt.Println("[4/5] Construction de l'index inversé...")
+	for rows.Next() {
+		var url, paragraphe string
+		err := rows.Scan(&url, &paragraphe)
 		if err != nil {
-			fmt.Printf("Erreur lors de la creation du fichier : %s\n", err)
-			return
+			fmt.Printf("Erreur scan: %s\n", err)
+			continue
+		}
+
+		countRows++
+		if countRows%100 == 0 {
+			fmt.Printf("  - %d lignes traitées...\n", countRows)
+		}
+
+		words := strings.Fields(paragraphe)
+		for _, w := range words {
+			w = strings.ToLower(strings.Trim(w, ".,!?;:\"()"))
+			if w == "" {
+				continue
+			}
+			if index[w] == nil {
+				index[w] = make(map[string]bool)
+			}
+			index[w][url] = true
 		}
 	}
 
-	defer file.Close()
+	fmt.Printf("[4/5] Terminé, %d lignes traitées. Nombre de mots uniques : %d\n", countRows, len(index))
 
-	for row.Next() {
-		var paragraphe string
-
-		err := row.Scan(&paragraphe)
-
-		if err != nil {
-			log.Fatal(err)
+	fmt.Println("[5/5] Insertion de l'index dans la table invertedindex...")
+	insertCount := 0
+	for word, urlsMap := range index {
+		urlsSlice := make([]string, 0, len(urlsMap))
+		for u := range urlsMap {
+			urlsSlice = append(urlsSlice, u)
 		}
 
-		// for i,e := range paragraphe {
+		query := `
+			INSERT INTO invertedindex (word, urls)
+			VALUES ($1, $2)
+			ON CONFLICT (word) 
+			DO UPDATE SET urls = array(SELECT DISTINCT unnest(invertedindex.urls || EXCLUDED.urls))
+		`
 
-		// }
-
+		_, err := bdd.Exec(query, word, pq.Array(urlsSlice))
+		if err != nil {
+			fmt.Printf("Erreur insertion du mot '%s': %s\n", word, err)
+			continue
+		}
+		insertCount++
+		if insertCount%100 == 0 {
+			fmt.Printf("  - %d mots insérés...\n", insertCount)
+		}
 	}
 
-	fmt.Printf("tu clc github mais az")
+	fmt.Printf("Index inversé inséré avec succès ! Total mots insérés : %d\n", insertCount)
 }
