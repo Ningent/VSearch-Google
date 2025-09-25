@@ -3,102 +3,91 @@ package main
 import (
 	"database/sql"
 	"fmt"
-	"os"
+	"log"
 	"strings"
 
-	"github.com/joho/godotenv"
 	"github.com/lib/pq"
 	_ "github.com/lib/pq"
 )
 
+type Document struct {
+	URL        string
+	Paragraphe string
+}
+
+type InvertedIndexEntry struct {
+	Word      string
+	URL       string
+	TF        int
+	DocLength int
+}
+
 func main() {
-	fmt.Println("[1/5] Chargement des variables d'environnement...")
-	_ = godotenv.Load("C:/Users/WIN!!/Documents/google/brain/.env")
+	dbUser := "postgres"
+	dbPass := "dataBaseGooglePassworld1"
+	dbName := "postgres"
+	dbHost := "db.dqhyfbqwlkdfvuvtzdht.supabase.co"
+	dbPort := "5432"
 
-	user := os.Getenv("SupabaseName")
-	password := os.Getenv("SupabaseMdp")
-	host := os.Getenv("SupabaseUrl")
-	dbName := os.Getenv("SupabaseDB")
-	port := os.Getenv("SupabasePort")
-
-	spt := fmt.Sprintf(
-		"host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
-		host, port, user, password, dbName,
+	connStr := fmt.Sprintf(
+		"host=%s port=%s user=%s password=%s dbname=%s sslmode=require",
+		dbHost, dbPort, dbUser, dbPass, dbName,
 	)
 
-	fmt.Println("[2/5] Connexion à la base de données...")
-	bdd, err := sql.Open("postgres", spt)
+	db, err := sql.Open("postgres", connStr)
 	if err != nil {
-		panic(err)
+		log.Fatal("Connexion DB:", err)
 	}
-	defer bdd.Close()
+	defer db.Close()
 
-	query := `SELECT "URL", paragraphe FROM main`
-	fmt.Println("[3/5] Exécution de la requête SELECT sur la table main...")
-	rows, err := bdd.Query(query)
+	if err := db.Ping(); err != nil {
+		log.Fatal("Ping DB:", err)
+	}
+	fmt.Println("Connecté à Supabase/Postgres")
+
+	rows, err := db.Query(`SELECT "URL", "paragraphe" FROM main`)
 	if err != nil {
-		panic(err)
+		log.Fatal("Erreur SELECT:", err)
 	}
 	defer rows.Close()
 
-	// map[word] => set d'URLs pour éviter doublons
-	index := make(map[string]map[string]bool)
-	countRows := 0
-
-	fmt.Println("[4/5] Construction de l'index inversé...")
+	var documents []Document
 	for rows.Next() {
-		var url, paragraphe string
-		err := rows.Scan(&url, &paragraphe)
-		if err != nil {
-			fmt.Printf("Erreur scan: %s\n", err)
+		var doc Document
+		if err := rows.Scan(&doc.URL, &doc.Paragraphe); err != nil {
+			log.Println("Erreur scan:", err)
 			continue
 		}
+		documents = append(documents, doc)
+	}
+	fmt.Printf("%d documents récupérés\n", len(documents))
 
-		countRows++
-		if countRows%100 == 0 {
-			fmt.Printf("  - %d lignes traitées...\n", countRows)
-		}
+	for _, doc := range documents {
+		words := strings.Fields(doc.Paragraphe)
+		docLength := len(words)
+		tfMap := make(map[string]int)
 
-		words := strings.Fields(paragraphe)
 		for _, w := range words {
 			w = strings.ToLower(strings.Trim(w, ".,!?;:\"()"))
-			if w == "" {
-				continue
+			if w != "" {
+				tfMap[w]++
 			}
-			if index[w] == nil {
-				index[w] = make(map[string]bool)
+		}
+
+		for word, tf := range tfMap {
+			_, err := db.Exec(
+				`INSERT INTO invertedindex ("word","urls","tf","doclength") VALUES ($1,$2,$3,$4)
+					ON CONFLICT ("word","urls") DO UPDATE SET tf=$3, doclength=$4`,
+				word, pq.Array([]string{doc.URL}), tf, docLength,
+			)
+
+			if err != nil {
+				log.Println("Insert erreur:", err)
+			} else {
+				fmt.Printf("Inséré : %s → %s (tf=%d, len=%d)\n", word, doc.URL, tf, docLength)
 			}
-			index[w][url] = true
 		}
 	}
 
-	fmt.Printf("[4/5] Terminé, %d lignes traitées. Nombre de mots uniques : %d\n", countRows, len(index))
-
-	fmt.Println("[5/5] Insertion de l'index dans la table invertedindex...")
-	insertCount := 0
-	for word, urlsMap := range index {
-		urlsSlice := make([]string, 0, len(urlsMap))
-		for u := range urlsMap {
-			urlsSlice = append(urlsSlice, u)
-		}
-
-		query := `
-			INSERT INTO invertedindex (word, urls)
-			VALUES ($1, $2)
-			ON CONFLICT (word) 
-			DO UPDATE SET urls = array(SELECT DISTINCT unnest(invertedindex.urls || EXCLUDED.urls))
-		`
-
-		_, err := bdd.Exec(query, word, pq.Array(urlsSlice))
-		if err != nil {
-			fmt.Printf("Erreur insertion du mot '%s': %s\n", word, err)
-			continue
-		}
-		insertCount++
-		if insertCount%100 == 0 {
-			fmt.Printf("  - %d mots insérés...\n", insertCount)
-		}
-	}
-
-	fmt.Printf("Index inversé inséré avec succès ! Total mots insérés : %d\n", insertCount)
+	fmt.Println("Index inversé terminé et inséré dans Supabase")
 }
