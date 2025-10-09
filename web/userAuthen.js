@@ -12,23 +12,20 @@ async function getIp() {
 
 function genUUID (){return crypto.randomUUID();}
 
-function genOrCreatUUID(){
-    let match = document.cookie.match(/(^| )userID=([^;]+)/)
+function genOrCreatUUID() {
+    const match = document.cookie.match(/(?:^| )userID=([^;]+)/);
 
-    if (match){
-        return match[2];
-    }else {
+    if (match) {
+        return match[1]; 
+    } else {
         const uuid = genUUID();
 
-        document.cookie = `
-            userID=${uuid}; 
-            path=/; 
-            max-age=${60 * 60 * 24 * 365*100}
-        `;
+        document.cookie = `userID=${uuid}; path=/; max-age=${60 * 60 * 24 * 365 * 100}; SameSite=Lax; Secure`;
 
         return uuid;
-    }   
+    }
 }
+
 
 window.onload = async () => {
     const toggle = document.getElementById("toggleMode");
@@ -39,7 +36,7 @@ window.onload = async () => {
     packag = {
         "action":"NewUser",
         "data":{
-            "ip":ip,
+            "ip":String(ip),
             "uuid":String(genOrCreatUUID()),
             "theme":theme
         }

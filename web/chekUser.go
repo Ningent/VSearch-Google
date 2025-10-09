@@ -8,6 +8,7 @@ import (
 	"os"
 
 	"github.com/joho/godotenv"
+	_ "github.com/lib/pq"
 )
 
 func chekUsers(data map[string]interface{}, w http.ResponseWriter) {
@@ -17,7 +18,7 @@ func chekUsers(data map[string]interface{}, w http.ResponseWriter) {
 
 	fmt.Printf("test -> %s\n%s\n%s\n", ip, uuid, theme)
 
-	_ = godotenv.Load()
+	_ = godotenv.Load("C:/Users/WIN!!/Documents/google/brain/.env")
 
 	host := os.Getenv("SupabaseURL")
 	port := os.Getenv("SupabasePort")
@@ -32,29 +33,72 @@ func chekUsers(data map[string]interface{}, w http.ResponseWriter) {
 
 	bdd, err := sql.Open("postgres", connStr)
 	if err != nil {
-		fmt.Printf("Error in bdd open -> %s\n")
+		fmt.Printf("Error in bdd open -> %s\n", err)
 		return
 	}
 
 	defer bdd.Close()
 
 	table := os.Getenv("tableName2")
-	query := `SELECT * FROM %s WHERE uuid = $1`
-	sendQuery, err := bdd.Query(query, table, uuid)
+	query := fmt.Sprintf(`SELECT uuid FROM %s WHERE uuid = $1`, table)
 
-	var dbUuid string
-	err = sendQuery.Scan(&dbUuid)
-
+	rows, err := bdd.Query(query, uuid)
 	if err != nil {
-		fmt.Printf("Error to have dbUuid\n%s\n", err)
+		fmt.Printf("Erreur lors du SELECT : %v\n", err)
 		return
 	}
+	defer rows.Close()
 
-	if dbUuid == nil {
-		//insert le nouveau users a la bdd
-		//mes le theme dans le bdd
+	var dbUuid string
+	found := false
+	if rows.Next() {
+		err = rows.Scan(&dbUuid)
+		if err != nil {
+			fmt.Printf("Erreur de lecture : %v\n", err)
+			return
+		}
+		found = true
+		fmt.Println("UUID trouvé :", dbUuid)
 	} else {
-		//envoie le theme aux front
+		found = false
+		fmt.Println("Aucun utilisateur trouvé, on peut en créer un nouveau.")
+	}
+
+	if !found {
+		fmt.Printf("%s\n", found)
+		col1 := os.Getenv("coll2T1")
+		col2 := os.Getenv("coll2T2")
+		col3 := os.Getenv("coll2T3")
+
+		query = fmt.Sprintf(
+			"INSERT INTO %s (%s, %s, %s) VALUES ($1, $2, $3)",
+			table, col1, col2, col3,
+		)
+		_, err = bdd.Exec(query, ip, uuid, theme)
+		if err != nil {
+			fmt.Printf("Erreur insert data : %s\n", err)
+			return
+		}
+
+		fmt.Print("Insertion done\n")
+	} else {
+		fmt.Printf("%s\n", found)
+		query = fmt.Sprintf("SELECT theme FROM %s WHERE uuid = $1", table)
+		row := bdd.QueryRow(query, uuid)
+
+		var bddTheme string
+		err = row.Scan(&bddTheme)
+		if err != nil {
+			if err == sql.ErrNoRows {
+				fmt.Println("Aucun theme trouvé pour cet UUID")
+			} else {
+				fmt.Printf("Erreur lecture theme : %v\n", err)
+			}
+			return
+		}
+
+		fmt.Printf("bddTheme -> %s\n", bddTheme)
+
 	}
 
 	packag := map[string]string{
