@@ -12,7 +12,7 @@ async function getIp() {
 
 function genUUID (){return crypto.randomUUID();}
 
-function genOrCreatUUID() {
+export function genOrCreatUUID() {
     const match = document.cookie.match(/(?:^| )userID=([^;]+)/);
 
     if (match) {
@@ -26,15 +26,14 @@ function genOrCreatUUID() {
     }
 }
 
-
 window.onload = async () => {
     const toggle = document.getElementById("toggleMode");
     let theme = toggle.checked ? "dark" : "light";
 
     const ip = await getIp()
 
-    packag = {
-        "action":"NewUser",
+    let packag = {
+        "action":"chekUsers",
         "data":{
             "ip":String(ip),
             "uuid":String(genOrCreatUUID()),
@@ -50,11 +49,34 @@ window.onload = async () => {
         body:JSON.stringify(packag)
     })
 
-    .then (response => response.json())
-    .then (data => {
-        console.log (data);
+    .then(response => {
+        if (!response.ok) throw new Error(
+            "HTTP error " + response.status + " " + response.statusText
+        );
+        return response.json();
+    })
+    .then(data => {
+        console.log(data);
+        const body = document.body;
+        const modeLabel = document.getElementById('modeLabel');
+
+
+        if (data.status === "old") {
+            if (data.output === "light") {
+                body.classList.remove("dark");
+                body.classList.add("light");
+                modeLabel.textContent = "Light Mode";
+                toggle.checked = false;
+            } else {
+                body.classList.remove("light");
+                body.classList.add("dark");
+                modeLabel.textContent = "Dark Mode";
+                toggle.checked = true;
+            }
+        }
     })
     .catch (error => {
         console.log(error);
     })
 }
+

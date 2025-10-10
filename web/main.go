@@ -31,8 +31,10 @@ func handler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		if requete.Action == "NewUser" {
+		if requete.Action == "chekUsers" {
 			chekUsers(requete.Data, w)
+		} else if requete.Action == "changeTheme" {
+			changeTheme(requete.Data, w)
 		}
 	}
 }

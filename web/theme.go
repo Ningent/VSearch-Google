@@ -81,6 +81,14 @@ func chekUsers(data map[string]interface{}, w http.ResponseWriter) {
 		}
 
 		fmt.Print("Insertion done\n")
+		packag := map[string]string{
+			"status": "new",
+			"output": "InsetionDone",
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(packag)
+
 	} else {
 		fmt.Printf("%s\n", found)
 		query = fmt.Sprintf("SELECT theme FROM %s WHERE uuid = $1", table)
@@ -99,10 +107,60 @@ func chekUsers(data map[string]interface{}, w http.ResponseWriter) {
 
 		fmt.Printf("bddTheme -> %s\n", bddTheme)
 
+		packag := map[string]string{
+			"status": "old",
+			"output": bddTheme,
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(packag)
+	}
+}
+
+func changeTheme(data map[string]interface{}, w http.ResponseWriter) {
+	uuid := data["uuid"].(string)
+	theme := data["theme"].(string)
+
+	_ = godotenv.Load("C:/Users/WIN!!/Documents/google/brain/.env")
+
+	host := os.Getenv("SupabaseURL")
+	port := os.Getenv("SupabasePort")
+	user := os.Getenv("SupabaseName")
+	password := os.Getenv("SupabaseMDP")
+	dbName := os.Getenv("SupabaseDB")
+
+	connStr := fmt.Sprintf(
+		"host=%s port=%s user=%s password=%s dbname=%s sslmode=require",
+		host, port, user, password, dbName,
+	)
+
+	bdd, err := sql.Open("postgres", connStr)
+	if err != nil {
+		fmt.Printf("Error in bdd open -> %s\n", err)
+		return
 	}
 
+	defer bdd.Close()
+
+	table := os.Getenv("tableName2")
+	col1 := os.Getenv("coll2T2")
+	col2 := os.Getenv("coll2T3")
+
+	query := fmt.Sprintf(
+		"UPDATE %s SET %s = $1 WHERE %s = $2",
+		table, col2, col1,
+	)
+
+	_, err = bdd.Exec(query, theme, uuid)
+
+	if err != nil {
+		fmt.Printf("Bdd theme MAJ ERROR\n%s\n", err)
+		return
+	}
+	fmt.Printf("BDD MAJ Theme\n")
+
 	packag := map[string]string{
-		"status": "ok",
+		"output": "BDD MAJ Theme",
 	}
 
 	w.Header().Set("Content-Type", "application/json")
