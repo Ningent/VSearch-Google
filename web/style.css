@@ -1,4 +1,3 @@
-/* Reset de base */
 * {
     margin: 0;
     padding: 0;
@@ -27,6 +26,7 @@ body.dark {
 main {
     text-align: center;
     animation: fadeIn 1s ease forwards;
+    padding: 20px;
 }
 
 .mode-toggle {
@@ -36,6 +36,7 @@ main {
     display: flex;
     align-items: center;
     gap: 10px;
+    animation: slideInRight 0.8s ease forwards;
 }
 
 .switch {
@@ -59,6 +60,7 @@ main {
     background-color: #ccc;
     transition: .4s;
     border-radius: 34px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
 .slider:before {
@@ -71,6 +73,7 @@ main {
     background-color: white;
     transition: .4s;
     border-radius: 50%;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 input:checked + .slider {
@@ -86,6 +89,12 @@ input:checked + .slider:before {
     margin-bottom: 40px;
     letter-spacing: 2px;
     animation: bounceIn 1s ease forwards;
+    font-weight: 700;
+    background: linear-gradient(135deg, #4285F4, #667eea);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    text-shadow: 0 2px 10px rgba(66, 133, 244, 0.1);
 }
 
 .search-container {
@@ -93,38 +102,90 @@ input:checked + .slider:before {
     justify-content: center;
     align-items: center;
     animation: slideUp 1s ease forwards;
+    gap: 0;
+    flex-wrap: wrap;
 }
 
 .inp {
     width: 350px;
-    padding: 12px 20px;
+    padding: 14px 22px;
     font-size: 1rem;
     border: 2px solid #ccc;
     border-radius: 50px 0 0 50px;
     outline: none;
     transition: all 0.3s ease, box-shadow 0.5s ease;
+    background: inherit;
+    color: inherit;
+    backdrop-filter: blur(10px);
+}
+
+body.light .inp {
+    background-color: rgba(255, 255, 255, 0.9);
+    border-color: #ddd;
+}
+
+body.dark .inp {
+    background-color: rgba(45, 45, 45, 0.9);
+    border-color: #555;
+}
+
+.inp::placeholder {
+    opacity: 0.6;
 }
 
 .inp:focus {
     border-color: #4285F4;
-    box-shadow: 0 0 15px rgba(66, 133, 244, 0.5);
-    transform: scale(1.02);
+    box-shadow: 0 0 20px rgba(66, 133, 244, 0.6), inset 0 0 10px rgba(66, 133, 244, 0.1);
+    transform: scale(1.03) translateY(-2px);
+}
+
+.inp:hover {
+    border-color: #4285F4;
+    box-shadow: 0 4px 12px rgba(66, 133, 244, 0.3);
 }
 
 .btn {
-    padding: 12px 25px;
+    padding: 14px 28px;
     font-size: 1rem;
-    background-color: #4285F4;
+    background: linear-gradient(135deg, #4285F4, #357ae8);
     color: white;
     border: none;
     border-radius: 0 50px 50px 0;
     cursor: pointer;
-    transition: background-color 0.3s ease, transform 0.2s ease;
+    transition: all 0.3s ease;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 4px 15px rgba(66, 133, 244, 0.4);
+}
+
+.btn::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.3);
+    transform: translate(-50%, -50%);
+    transition: width 0.6s, height 0.6s;
 }
 
 .btn:hover {
-    background-color: #357ae8;
-    transform: scale(1.05) rotate(-1deg);
+    background: linear-gradient(135deg, #357ae8, #2e5bb8);
+    transform: scale(1.08) translateY(-3px);
+    box-shadow: 0 8px 25px rgba(66, 133, 244, 0.5);
+}
+
+.btn:hover::before {
+    width: 300px;
+    height: 300px;
+}
+
+.btn:active {
+    transform: scale(0.96) translateY(-1px);
 }
 
 @keyframes fadeIn {
@@ -144,20 +205,10 @@ input:checked + .slider:before {
     to {opacity: 1; transform: translateY(0);}
 }
 
-@media (max-width: 500px) {
-    .inp {
-        width: 200px;
-        padding: 10px 15px;
-    }
-    .btn {
-        padding: 10px 15px;
-        font-size: 0.9rem;
-    }
-    .titre {
-        font-size: 3rem;
-    }
+@keyframes slideInRight {
+    from {opacity: 0; transform: translateX(100px);}
+    to {opacity: 1; transform: translateX(0);}
 }
-
 
 .btn.clicked {
     animation: clickAnim 0.3s ease;
@@ -168,3 +219,99 @@ input:checked + .slider:before {
     50% { transform: scale(0.95) rotate(-2deg); }
     100% { transform: scale(1) rotate(0deg); }
 }
+
+@media (max-width: 768px) {
+    .titre {
+        font-size: 3.2rem;
+        margin-bottom: 30px;
+        letter-spacing: 1.5px;
+    }
+
+    .search-container {
+        animation: slideUp 1.2s ease forwards;
+    }
+
+    .inp {
+        width: 280px;
+        padding: 12px 18px;
+        font-size: 0.95rem;
+    }
+
+    .btn {
+        padding: 12px 22px;
+        font-size: 0.95rem;
+    }
+}
+
+@media (max-width: 600px) {
+    .titre {
+        font-size: 2.5rem;
+        margin-bottom: 25px;
+        letter-spacing: 1px;
+    }
+
+    .search-container {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .inp {
+        width: 90vw;
+        max-width: 280px;
+        padding: 12px 16px;
+        font-size: 0.9rem;
+        border-radius: 50px;
+        border: 2px solid #ccc;
+    }
+
+    .btn {
+        width: 90vw;
+        max-width: 280px;
+        padding: 12px 20px;
+        font-size: 0.9rem;
+        border-radius: 50px;
+    }
+
+    .inp:focus {
+        transform: scale(1.02) translateY(-2px);
+    }
+
+    .btn:hover {
+        transform: scale(1.05) translateY(-2px);
+    }
+
+    .mode-toggle {
+        top: 15px;
+        right: 15px;
+        gap: 8px;
+    }
+}
+
+@media (max-width: 400px) {
+    .titre {
+        font-size: 2rem;
+        margin-bottom: 20px;
+        letter-spacing: 0.5px;
+    }
+
+    .inp {
+        width: 85vw;
+        padding: 10px 14px;
+        font-size: 0.85rem;
+    }
+
+    .btn {
+        width: 85vw;
+        padding: 10px 16px;
+        font-size: 0.85rem;
+    }
+
+    .search-container {
+        gap: 8px;
+    }
+
+    main {
+        padding: 15px;
+    }
+}
+

@@ -35,6 +35,10 @@ func handler(w http.ResponseWriter, r *http.Request) {
 			chekUsers(requete.Data, w)
 		} else if requete.Action == "changeTheme" {
 			changeTheme(requete.Data, w)
+		} else if requete.Action == "searchGo" {
+			searchGo(requete.Data, w)
+		} else if requete.Action == "newSearch" {
+			newSearch(requete.Data, w)
 		}
 	}
 }

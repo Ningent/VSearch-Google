@@ -59,21 +59,25 @@ window.onload = async () => {
         console.log(data);
         const body = document.body;
         const modeLabel = document.getElementById('modeLabel');
-
+        const toggle = document.getElementById('toggleMode');
 
         if (data.status === "old") {
-            if (data.output === "light") {
-                body.classList.remove("dark");
-                body.classList.add("light");
-                modeLabel.textContent = "Light Mode";
-                toggle.checked = false;
-            } else {
-                body.classList.remove("light");
-                body.classList.add("dark");
-                modeLabel.textContent = "Dark Mode";
-                toggle.checked = true;
-            }
+            const theme = data.output === "light" ? "light" : "dark";
+            const isDark = theme === "dark";
+            
+            body.classList.toggle("dark", isDark);
+            body.classList.toggle("light", !isDark);
+            modeLabel.textContent = isDark ? "Dark Mode" : "Light Mode";
+            toggle.checked = isDark;
+            sessionStorage.setItem("theme", theme);
         }
+
+        toggle.addEventListener('change', () => {
+            const newTheme = toggle.checked ? "dark" : "light";
+            body.className = newTheme;
+            modeLabel.textContent = toggle.checked ? "Dark Mode" : "Light Mode";
+            sessionStorage.setItem("theme", newTheme);
+        });
     })
     .catch (error => {
         console.log(error);

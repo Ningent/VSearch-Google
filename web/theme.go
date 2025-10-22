@@ -27,7 +27,7 @@ func chekUsers(data map[string]interface{}, w http.ResponseWriter) {
 	dbName := os.Getenv("SupabaseDB")
 
 	connStr := fmt.Sprintf(
-		"host=%s port=%s user=%s password=%s dbname=%s sslmode=require",
+		"host=%s port=%s user=%s password=%s dbname=%s sslmode=require application_name=myapp",
 		host, port, user, password, dbName,
 	)
 
