@@ -60,11 +60,12 @@ class Crawler:
 
 
 def getUrls(ls=None):
+    path = "C:/Users/WIN!!/Documents/google/brain/inSearch/UrlDemo.txt"
     if ls is None:
         ls = []
     
     try:
-        with open("UrlDemo.txt", "r") as file:
+        with open(path, "r") as file:
             for line in file:
                 line = line.strip()
                 if line:
